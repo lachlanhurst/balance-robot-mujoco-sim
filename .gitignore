@@ -1,3 +1,10 @@
+# MuJoCo stuff
+MUJOCO_LOG.TXT
+
+
+
+## Python stuff
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
