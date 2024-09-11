@@ -1,0 +1,51 @@
+<mujoco model="balance">
+
+
+
+
+  <!-- <worldbody>
+    <body>
+      <joint type="free"/>
+      <geom size="0.05 0.0185 0.0855" pos="0 0 0.0995" type="box"/>
+      <body name="l_wheel" pos="-0.074 0 0.034">
+        <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.032" diaginertia="2.3e-05 1.3e-05 1.3e-05"/>
+        <joint name="torso_l_wheel" pos="0 0 0" axis="-1 0 0" range="0 0.548" actuatorfrcrange="-5 5"/>
+        <geom size="0.034 0.013" quat="0.707107 0 0.707107 0" type="cylinder" rgba="0.2 0.2 0.2 1"/>
+      </body>
+      <body name="r_wheel" pos="0.074 0 0.034">
+        <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.032" diaginertia="2.3e-05 1.3e-05 1.3e-05"/>
+        <joint name="torso_r_wheel" pos="0 0 0" axis="1 0 0" range="0 0.548" actuatorfrcrange="-5 5"/>
+        <geom size="0.034 0.013" quat="0.707107 0 0.707107 0" type="cylinder" rgba="0.2 0.2 0.2 1"/>
+      </body>
+    </body>
+  </worldbody> -->
+
+
+
+  <worldbody>
+    <body>
+      <joint type="free"/>
+      <geom size="0.05 0.0185 0.0855" pos="0 0 0.0995" type="box"/>
+      <inertial pos="0 0.0 0.057" quat="0.707107 0 0 0.707107" mass="0.514" diaginertia="0.001311 0.0012568 0.000487"/>
+
+      <body name="l_wheel" pos="-0.074 0 0.034">
+        <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.032" diaginertia="2.3e-05 1.3e-05 1.3e-05"/>
+        <joint name="torso_l_wheel" type="hinge" pos="0 0 0" axis="-1 0 0"  actuatorfrcrange="-5 5" damping="0.1"/>
+        <geom name="l_wheel_geom" size="0.034 0.013" quat="0.707107 0 0.707107 0" type="cylinder"  material="wheel_material"/>
+      </body>
+      <body name="r_wheel" pos="0.074 0 0.034">
+        <inertial pos="0 0 0" quat="0.5 0.5 -0.5 0.5" mass="0.032" diaginertia="2.3e-05 1.3e-05 1.3e-05"/>
+        <joint name="torso_r_wheel" type="hinge" pos="0 0 0" axis="1 0 0"  actuatorfrcrange="-5 5" damping="0.1"/>
+        <geom name="r_wheel_geom" size="0.034 0.013" quat="0.707107 0 0.707107 0" type="cylinder" material="wheel_material"/>
+      </body>
+    </body>
+  </worldbody>
+
+
+
+  <actuator>
+    <velocity name="motor_l_wheel" joint="torso_l_wheel" gear="1" kv="0.9"/>
+    <velocity name="motor_r_wheel" joint="torso_r_wheel" gear="1" kv="0.9"/>
+  </actuator>
+
+</mujoco>
