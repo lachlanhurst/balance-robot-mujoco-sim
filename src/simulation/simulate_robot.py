@@ -6,7 +6,7 @@ import pathlib
 from OpenGL import GL
 from PySide6.QtWidgets import (
     QApplication, QWidget, QMainWindow, QPushButton, QSizePolicy,
-    QVBoxLayout, QCheckBox, QGroupBox, QHBoxLayout
+    QVBoxLayout, QCheckBox, QGroupBox, QHBoxLayout, QSlider, QLabel
 )
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
@@ -105,6 +105,12 @@ class UpdateSimThread(QThread):
         self.model = model
         self.data = data
         self.running = True
+
+        # robot control parameters
+        self.speed = 0.0
+        self.yaw = 0.0
+
+        # reset the simulation timer
         self.reset()
 
     @property
@@ -113,6 +119,9 @@ class UpdateSimThread(QThread):
 
     def run(self) -> None:
         while self.running:
+            # don't step the simulation past real time
+            # without this the sim usually finishes before it's
+            # even visible
             if self.data.time < self.real_time:
                 mujoco.mj_step(self.model, self.data)
             else:
@@ -124,6 +133,12 @@ class UpdateSimThread(QThread):
     
     def reset(self):
         self.real_time_start = time.time()
+    
+    def set_speed(self, speed: float) -> None:
+        self.speed = speed
+    
+    def set_yaw(self, yaw: float) -> None:
+        self.yaw = yaw
 
 
 class Window(QMainWindow):
@@ -144,20 +159,25 @@ class Window(QMainWindow):
 
         layout = QVBoxLayout()
         layout_top = QHBoxLayout()
+        layout_top.setSpacing(8)
         reset_button = QPushButton("Reset")
+        reset_button.setMinimumWidth(90)
         reset_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         reset_button.clicked.connect(self.reset_simulation)
         layout_top.addWidget(reset_button)
-        layout_top.addWidget(self.create_top())
+        layout_robot_controls = QVBoxLayout()
+        layout_robot_controls.setContentsMargins(0,0,0,0)
+        layout_robot_controls.addWidget(self.create_top())
+        layout_top.addLayout(layout_robot_controls)
         layout_top.setContentsMargins(8,0,8,0)
         layout.addLayout(layout_top)
         layout.addWidget(QWidget.createWindowContainer(self.viewport))
-        layout.setContentsMargins(0,0,0,0)
+        layout.setContentsMargins(0,4,0,0)
         layout.setStretch(1,1)
         w = QWidget()
         w.setLayout(layout)
         self.setCentralWidget(w)
-        self.resize(640, 480)
+        self.resize(800, 600)
 
         self.th = UpdateSimThread(self.model, self.data, self)
         self.th.start()
@@ -170,26 +190,48 @@ class Window(QMainWindow):
         )
 
     def create_top(self):
-        layout = QHBoxLayout()
-        layout.setContentsMargins(0,0,0,0)
-        collision_checkbox = QCheckBox("Reflection")
-        collision_checkbox.stateChanged.connect(self.toggle_reflection)
-        layout.addWidget(collision_checkbox)
-        stereo_checkbox = QCheckBox("Shadow")
-        stereo_checkbox.stateChanged.connect(self.toggle_shadow)
-        layout.addWidget(stereo_checkbox)
-        layout.addStretch()
+        layout = QVBoxLayout()
+        # layout.setContentsMargins(0,0,0,0)
+        label_width = 60
+
+        speed_layout = QHBoxLayout()
+        speed_slider = QSlider(Qt.Horizontal)
+        # QSliders only support ints, so scale the values we want by 1000
+        # and then remove this scale factor in the valueChanged handler
+        speed_slider.setMinimum(-4 * 1000)
+        speed_slider.setMaximum(4 * 1000)
+        speed_slider.setValue(0)
+        speed_slider.valueChanged.connect(self._speed_changed)
+        speed_label = QLabel("Speed")
+        speed_label.setFixedWidth(label_width)
+        speed_layout.addWidget(speed_label)
+        speed_layout.addWidget(speed_slider)
+
+        yaw_layout = QHBoxLayout()
+        yaw_slider = QSlider(Qt.Horizontal)
+        yaw_slider.setMinimum(-10 * 1000)
+        yaw_slider.setMaximum(10 * 1000)
+        yaw_slider.setValue(0)
+        yaw_slider.valueChanged.connect(self._yaw_changed)
+        yaw_label = QLabel("Yaw")
+        yaw_label.setFixedWidth(label_width)
+        yaw_layout.addWidget(yaw_label)
+        yaw_layout.addWidget(yaw_slider)
+
+        layout.addLayout(speed_layout)
+        layout.addLayout(yaw_layout)
+
         w = QGroupBox("Robot Control")
         w.setLayout(layout)
-        w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        w.setFixedHeight(60)
         return w
 
-    def toggle_shadow(self, state):
-        self.scn.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = bool(state)
+    def _speed_changed(self, value: int) -> None:
+        speed = value / 1000
+        self.th.set_speed(speed)
 
-    def toggle_reflection(self, state):
-        self.scn.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = bool(state)
+    def _yaw_changed(self, value: int) -> None:
+        yaw = value / 1000
+        self.th.set_yaw(yaw)
 
     def create_free_camera(self):
         cam = mujoco.MjvCamera()
