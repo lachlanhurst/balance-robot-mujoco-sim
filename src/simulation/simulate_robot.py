@@ -16,7 +16,7 @@ from PySide6.QtCore import QTimer, Qt, Signal, Slot, QThread
 from PySide6.QtGui import (
     QOpenGLFunctions, QGuiApplication, QSurfaceFormat
 )
-
+import time
 
 format = QSurfaceFormat()
 format.setDepthBufferSize(24)
@@ -105,10 +105,18 @@ class UpdateSimThread(QThread):
         self.model = model
         self.data = data
         self.running = True
+        self.real_time_start = time.time()
+
+    @property
+    def real_time(self):
+        return time.time() - self.real_time_start
 
     def run(self) -> None:
         while self.running:
-            mujoco.mj_step(self.model, self.data)
+            if self.data.time < self.real_time:
+                mujoco.mj_step(self.model, self.data)
+            else:
+                time.sleep(0.0001)
 
     def stop(self):
         self.running = False
