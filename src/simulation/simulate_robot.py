@@ -5,7 +5,7 @@ import numpy as np
 import pathlib
 from OpenGL import GL
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QMainWindow,
+    QApplication, QWidget, QMainWindow, QPushButton, QSizePolicy,
     QVBoxLayout, QCheckBox, QGroupBox, QHBoxLayout
 )
 from PySide6.QtCore import QTimer, Qt
@@ -105,7 +105,7 @@ class UpdateSimThread(QThread):
         self.model = model
         self.data = data
         self.running = True
-        self.real_time_start = time.time()
+        self.reset()
 
     @property
     def real_time(self):
@@ -121,6 +121,9 @@ class UpdateSimThread(QThread):
     def stop(self):
         self.running = False
         self.wait()
+    
+    def reset(self):
+        self.real_time_start = time.time()
 
 
 class Window(QMainWindow):
@@ -133,15 +136,24 @@ class Window(QMainWindow):
         self.cam = self.create_free_camera()
         self.opt = mujoco.MjvOption()
         self.scn = mujoco.MjvScene(self.model, maxgeom=10000)
-        self.scn.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = False
-        self.scn.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = False
+        self.scn.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = True
+        self.scn.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = True
         self.viewport = Viewport(self.model, self.data, self.cam, self.opt, self.scn)
         self.viewport.setScreenScale(QGuiApplication.instance().primaryScreen().devicePixelRatio())
         self.viewport.updateRuntime.connect(self.show_runtime)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.create_top())
+        layout_top = QHBoxLayout()
+        reset_button = QPushButton("Reset")
+        reset_button.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        reset_button.clicked.connect(self.reset_simulation)
+        layout_top.addWidget(reset_button)
+        layout_top.addWidget(self.create_top())
+        layout_top.setContentsMargins(8,0,8,0)
+        layout.addLayout(layout_top)
         layout.addWidget(QWidget.createWindowContainer(self.viewport))
+        layout.setContentsMargins(0,0,0,0)
+        layout.setStretch(1,1)
         w = QWidget()
         w.setLayout(layout)
         self.setCentralWidget(w)
@@ -159,6 +171,7 @@ class Window(QMainWindow):
 
     def create_top(self):
         layout = QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
         collision_checkbox = QCheckBox("Reflection")
         collision_checkbox.stateChanged.connect(self.toggle_reflection)
         layout.addWidget(collision_checkbox)
@@ -166,8 +179,9 @@ class Window(QMainWindow):
         stereo_checkbox.stateChanged.connect(self.toggle_shadow)
         layout.addWidget(stereo_checkbox)
         layout.addStretch()
-        w = QGroupBox("Rendering")
+        w = QGroupBox("Robot Control")
         w.setLayout(layout)
+        w.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         w.setFixedHeight(60)
         return w
 
@@ -181,11 +195,18 @@ class Window(QMainWindow):
         cam = mujoco.MjvCamera()
         cam.type = mujoco.mjtCamera.mjCAMERA_FREE
         cam.fixedcamid = -1
-        for i in range(3):
-            cam.lookat[i] = np.median(self.data.geom_xpos[:, i])
-        cam.distance = self.model.stat.extent
-        cam.elevation = -45
+        cam.lookat = np.array([ 0.0 , 0.0 , 0.0 ])
+        cam.distance = self.model.stat.extent * 2
+        cam.elevation = -25
+        cam.azimuth = 45
         return cam
+
+    def reset_simulation(self):
+        # Reset state and time.
+        mujoco.mj_resetData(self.model, self.data)
+        mujoco.mj_forward(self.model, self.data)
+        self.th.reset()
+
 
 if __name__ == "__main__":
     app = QApplication()
