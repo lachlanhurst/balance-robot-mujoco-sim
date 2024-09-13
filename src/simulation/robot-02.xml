@@ -23,8 +23,8 @@
 
 
   <worldbody>
-    <body>
-      <joint type="free"/>
+    <body name="robot_body">
+      <joint name="robot_body_joint" type="free"/>
       <geom size="0.05 0.0185 0.0855" pos="0 0 0.0995" type="box"/>
       <inertial pos="0 0.0 0.057" quat="0.707107 0 0 0.707107" mass="0.514" diaginertia="0.001311 0.0012568 0.000487"/>
 

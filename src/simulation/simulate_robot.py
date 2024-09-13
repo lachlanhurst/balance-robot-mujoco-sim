@@ -18,6 +18,9 @@ from PySide6.QtGui import (
 )
 import time
 
+from robot_lqr import RobotLqr
+
+
 format = QSurfaceFormat()
 format.setDepthBufferSize(24)
 format.setStencilBufferSize(8)
@@ -100,11 +103,13 @@ class Viewport(QOpenGLWindow):
 
 class UpdateSimThread(QThread):
 
-    def __init__(self, model, data, parent=None) -> None:
+    def __init__(self, model: mujoco.MjModel, data: mujoco.MjData, parent=None) -> None:
         super().__init__(parent)
         self.model = model
         self.data = data
         self.running = True
+
+        self.robot = RobotLqr(model, data)
 
         # robot control parameters
         self.speed = 0.0
@@ -115,28 +120,42 @@ class UpdateSimThread(QThread):
 
     @property
     def real_time(self):
-        return time.time() - self.real_time_start
+        return time.monotonic_ns() - self.real_time_start
 
     def run(self) -> None:
         while self.running:
             # don't step the simulation past real time
             # without this the sim usually finishes before it's
             # even visible
-            if self.data.time < self.real_time:
+            if self.data.time < self.real_time / 1_000_000_000:
+                # In the real robot we update the control loop at a 200hz, so do that
+                # here too. It's the filters applied to pitch_dot and linear speed error
+                # that are not time step independent
+                if (time.monotonic_ns() - self.last_robot_update) / 1_000_000_000 >= (1/200):
+                    self.last_robot_update = time.monotonic_ns()
+                    # update robot with user inputs
+                    self.robot.set_velocity_linear_set_point(self.speed)
+                    self.robot.set_yaw(self.yaw)
+                    # update motor speed with LQR controller
+                    self.robot.update_motor_speed()
+
+                # step the simulation
                 mujoco.mj_step(self.model, self.data)
             else:
-                time.sleep(0.0001)
+                time.sleep(0.00001)
 
     def stop(self):
         self.running = False
         self.wait()
-    
+
     def reset(self):
-        self.real_time_start = time.time()
-    
+        self.real_time_start = time.monotonic_ns()
+        self.last_robot_update = time.monotonic_ns()
+        self.robot.reset()
+
     def set_speed(self, speed: float) -> None:
         self.speed = speed
-    
+
     def set_yaw(self, yaw: float) -> None:
         self.yaw = yaw
 
@@ -195,28 +214,28 @@ class Window(QMainWindow):
         label_width = 60
 
         speed_layout = QHBoxLayout()
-        speed_slider = QSlider(Qt.Horizontal)
+        self.speed_slider = QSlider(Qt.Horizontal)
         # QSliders only support ints, so scale the values we want by 1000
         # and then remove this scale factor in the valueChanged handler
-        speed_slider.setMinimum(-4 * 1000)
-        speed_slider.setMaximum(4 * 1000)
-        speed_slider.setValue(0)
-        speed_slider.valueChanged.connect(self._speed_changed)
+        self.speed_slider.setMinimum(-4 * 1000)
+        self.speed_slider.setMaximum(4 * 1000)
+        self.speed_slider.setValue(0)
+        self.speed_slider.valueChanged.connect(self._speed_changed)
         speed_label = QLabel("Speed")
         speed_label.setFixedWidth(label_width)
         speed_layout.addWidget(speed_label)
-        speed_layout.addWidget(speed_slider)
+        speed_layout.addWidget(self.speed_slider)
 
         yaw_layout = QHBoxLayout()
-        yaw_slider = QSlider(Qt.Horizontal)
-        yaw_slider.setMinimum(-10 * 1000)
-        yaw_slider.setMaximum(10 * 1000)
-        yaw_slider.setValue(0)
-        yaw_slider.valueChanged.connect(self._yaw_changed)
+        self.yaw_slider = QSlider(Qt.Horizontal)
+        self.yaw_slider.setMinimum(-10 * 1000)
+        self.yaw_slider.setMaximum(10 * 1000)
+        self.yaw_slider.setValue(0)
+        self.yaw_slider.valueChanged.connect(self._yaw_changed)
         yaw_label = QLabel("Yaw")
         yaw_label.setFixedWidth(label_width)
         yaw_layout.addWidget(yaw_label)
-        yaw_layout.addWidget(yaw_slider)
+        yaw_layout.addWidget(self.yaw_slider)
 
         layout.addLayout(speed_layout)
         layout.addLayout(yaw_layout)
@@ -244,6 +263,8 @@ class Window(QMainWindow):
         return cam
 
     def reset_simulation(self):
+        self.speed_slider.setValue(0)
+        self.yaw_slider.setValue(0)
         # Reset state and time.
         mujoco.mj_resetData(self.model, self.data)
         mujoco.mj_forward(self.model, self.data)

@@ -1,6 +1,6 @@
 <mujoco model="robot scene">
   <compiler angle="radian"/>
-  <!-- <option integrator="Euler" timestep="0.002"/> -->
+  <option timestep="0.000025"/>
 
   <include file="robot-02.xml"/>
 
@@ -28,8 +28,8 @@
   </worldbody>
 
   <contact>
-    <pair geom1="floor" geom2="l_wheel_geom" friction="1 1 0.7 0.001 0.001"/>
-    <pair geom1="floor" geom2="r_wheel_geom" friction="1 1 0.7 0.001 0.001"/>
+    <pair geom1="floor" geom2="l_wheel_geom" friction="0.4 0.4 0.07 0.001 0.001"/>
+    <pair geom1="floor" geom2="r_wheel_geom" friction="0.4 0.4 0.07 0.001 0.001"/>
   </contact>
 
 </mujoco>
