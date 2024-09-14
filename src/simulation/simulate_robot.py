@@ -3,18 +3,16 @@ import time
 import mujoco
 import numpy as np
 import pathlib
-from OpenGL import GL
 from PySide6.QtWidgets import (
     QApplication, QWidget, QMainWindow, QPushButton, QSizePolicy,
-    QVBoxLayout, QCheckBox, QGroupBox, QHBoxLayout, QSlider, QLabel
+    QVBoxLayout, QGroupBox, QHBoxLayout, QSlider, QLabel
 )
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtOpenGL import QOpenGLWindow
 from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtCore import QTimer, Qt, Signal, Slot, QThread
 from PySide6.QtGui import (
-    QOpenGLFunctions, QGuiApplication, QSurfaceFormat
+    QGuiApplication, QSurfaceFormat
 )
 import time
 
