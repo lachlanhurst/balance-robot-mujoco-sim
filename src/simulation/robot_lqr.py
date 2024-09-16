@@ -93,10 +93,10 @@ class RobotLqr:
         self.velocity_angular_filtered = 0.0
 
         # face a random direction
-        x_rot = np.random.random() * 2 * math.pi
+        x_rot = (np.random.random() - 0.5) * 2 * math.pi
         # rotate and pitch slightly
-        y_rot = np.random.random() * 0.2
-        z_rot = np.random.random() * 0.2
+        y_rot = (np.random.random() - 0.5) * 0.4
+        z_rot = (np.random.random() - 0.5) * 0.4
         euler_angles = [x_rot, y_rot, z_rot]
         # Convert to quaternion
         rotation = Rotation.from_euler('xyz', euler_angles)
