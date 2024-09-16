@@ -92,5 +92,15 @@ class RobotLqr:
         self.pitch_dot_filtered = 0.0
         self.velocity_angular_filtered = 0.0
 
+        # face a random direction
+        x_rot = np.random.random() * 2 * math.pi
+        # rotate and pitch slightly
+        y_rot = np.random.random() * 0.2
+        z_rot = np.random.random() * 0.2
+        euler_angles = [x_rot, y_rot, z_rot]
+        # Convert to quaternion
+        rotation = Rotation.from_euler('xyz', euler_angles)
+        self.data.qpos[3:7] = rotation.as_quat()
+
         self.data.actuator('motor_l_wheel').ctrl = [0]
         self.data.actuator('motor_r_wheel').ctrl = [0]
